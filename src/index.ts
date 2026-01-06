@@ -195,29 +195,41 @@ export async function startApp(options: TermaiOptions) {
 
         if (hasRedirect || hasBackground) {
           // Use inherit stdio for redirects/background - let shell handle I/O
-          spawnSync('sh', ['-c', shellCommand], {
+          const result = spawnSync('sh', ['-c', shellCommand], {
             stdio: 'inherit',
             cwd: process.cwd(),
             env: process.env,
+            timeout: 5000, // 5 second timeout
           });
+
+          // Check for timeout
+          if (result.signal === 'SIGTERM' || result.error) {
+            process.stderr.write('\n\x1b[31mError: Command timed out or failed to execute\x1b[0m\n');
+          }
         } else {
           // Capture output and format with dim for interactive commands
           const result = spawnSync('sh', ['-c', shellCommand], {
             cwd: process.cwd(),
             env: process.env,
             encoding: 'utf8',
+            timeout: 5000, // 5 second timeout
           });
 
-          // Print AI response with dim formatting
-          if (result.stdout) {
-            // Dim color ANSI code: \x1b[2m ... \x1b[0m
-            process.stdout.write('\x1b[2m');
-            process.stdout.write(result.stdout);
-            process.stdout.write('\x1b[0m');
-          }
+          // Check for timeout
+          if (result.signal === 'SIGTERM' || result.error) {
+            process.stderr.write('\n\x1b[31mError: Command timed out or failed to execute\x1b[0m\n');
+          } else {
+            // Print AI response with dim formatting
+            if (result.stdout) {
+              // Dim color ANSI code: \x1b[2m ... \x1b[0m
+              process.stdout.write('\x1b[2m');
+              process.stdout.write(result.stdout);
+              process.stdout.write('\x1b[0m');
+            }
 
-          if (result.stderr) {
-            process.stderr.write(result.stderr);
+            if (result.stderr) {
+              process.stderr.write(result.stderr);
+            }
           }
         }
 
